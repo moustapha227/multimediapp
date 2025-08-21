@@ -13,6 +13,5 @@ Future<List<FileSystemEntity>> getAudioFiles() async {
         file.path.endsWith(".wav") ||
         file.path.endsWith(".aac");
   }).toList();
-
   return audioFiles;
 }

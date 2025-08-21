@@ -1,6 +1,9 @@
-import 'package:audio_video_progress_bar/audio_video_progress_bar.dart';
 import 'package:flutter/material.dart';
-import 'package:just_audio/just_audio.dart';
+import 'package:multimediapp/audio_screen.dart';
+import 'package:multimediapp/main.dart';
+import 'package:multimediapp/models/audio.dart';
+import 'package:multimediapp/service/music_service.dart';
+import 'package:multimediapp/widgets/audio_tile.dart';
 
 class PlayerPage extends StatefulWidget {
   const PlayerPage({super.key});
@@ -10,163 +13,117 @@ class PlayerPage extends StatefulWidget {
 }
 
 class _PlayerPageState extends State<PlayerPage> {
-  String musicUrl =
-      "https://s3.amazonaws.com/scifri-episodes/scifri20181123-episode.mp3";
-  String thumbnailImgUrl = "";
-  var player = AudioPlayer();
-  bool loaded = false;
-  bool playing = false;
-
-  void playMusic() async {
-    setState(() {
-      playing = true;
-    });
-    await player.play();
-  }
-
-  void pauseMusic() async {
-    setState(() {
-      playing = false;
-    });
-    await player.pause();
-  }
-
+  final MusicService _musicService = MusicService();
+  List<Audio> _audios = [];
+  bool _isLoading = true;
   @override
   void initState() {
-    //loadMusic(filePath);
     super.initState();
+
+    _loadAudio();
   }
 
-  @override
-  void dispose() {
-    player.dispose();
-    super.dispose();
+  Future<void> _loadAudio() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    _audios = await _musicService.scanForAudios();
+
+    setState(() {
+      _isLoading = false;
+    });
   }
 
-  @override
+  void _onAudioTap(int index) async {
+    await _musicService.playAudio(index);
+    setState(() {});
+  }
+
+  void _openAudioScreen(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => AudioScreen()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Music Player")),
+      appBar: AppBar(
+        title: const Text("MULTIMEDIA PALYER AUDIO & VIDEO"),
+        actions: [
+          IconButton(onPressed: _loadAudio, icon: Icon(Icons.refresh)),
+          IconButton(
+            onPressed: () => _openAudioScreen(context),
+            icon: Icon(Icons.play_arrow),
+          ),
+        ],
+      ),
       body: Column(
         children: [
-          const Spacer(flex: 2),
-          // ClipRRect(
-          //   borderRadius: BorderRadius.circular(8),
-          //   child: Image.network(
-          //     thumbnailImgUrl,
-          //     height: 350,
-          //     width: 350,
-          //     fit: BoxFit.cover,
-          //   ),
-          // ),
-          //:Text("Music Player")
-          const Spacer(),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: StreamBuilder(
-              stream: player.positionStream,
-              builder: (context, snapshot1) {
-                final Duration duration = loaded
-                    ? snapshot1.data as Duration
-                    : const Duration(seconds: 0);
-                return StreamBuilder(
-                  stream: player.bufferedPositionStream,
-                  builder: (context, snapshot2) {
-                    final Duration bufferedDuration = loaded
-                        ? snapshot2.data as Duration
-                        : const Duration(seconds: 0);
-                    return SizedBox(
-                      height: 30,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: ProgressBar(
-                          progress: duration,
-                          total: player.duration ?? const Duration(seconds: 0),
-                          buffered: bufferedDuration,
-                          timeLabelPadding: -1,
-                          timeLabelTextStyle: const TextStyle(
-                            fontSize: 14,
-                            color: Colors.black,
-                          ),
-                          progressBarColor: Colors.red,
-                          baseBarColor: Colors.grey[200],
-                          bufferedBarColor: Colors.grey[350],
-                          thumbColor: Colors.red,
-                          onSeek: loaded
-                              ? (duration) async {
-                                  await player.seek(duration);
-                                }
-                              : null,
+          Expanded(
+            child: _isLoading
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(color: Colors.purpleAccent),
+                        SizedBox(height: 20),
+                        Text(
+                          "Scannages des fichiers Audios....",
+                          style: TextStyle(color: Colors.white),
                         ),
-                      ),
-                    );
-                  },
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              const SizedBox(width: 10),
-              IconButton(
-                onPressed: loaded
-                    ? () async {
-                        if (player.position.inSeconds >= 10) {
-                          await player.seek(
-                            Duration(seconds: player.position.inSeconds - 10),
-                          );
-                        } else {
-                          await player.seek(const Duration(seconds: 0));
-                        }
-                      }
-                    : null,
-                icon: const Icon(Icons.fast_rewind_rounded),
-              ),
-              Container(
-                height: 50,
-                width: 50,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.red,
-                ),
-                child: IconButton(
-                  onPressed: loaded
-                      ? () {
-                          if (playing) {
-                            pauseMusic();
-                          } else {
-                            playMusic();
-                          }
-                        }
-                      : null,
-                  icon: Icon(
-                    playing ? Icons.pause : Icons.play_arrow,
-                    color: Colors.white,
+                      ],
+                    ),
+                  )
+                : _audios.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.music_off,
+                          size: 80,
+                          color: Colors.grey[600],
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          "Pas de Audio",
+                          style: TextStyle(color: Colors.white, fontSize: 18),
+                        ),
+                        SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: _loadAudio,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.purple,
+                            foregroundColor: Colors.white,
+                          ),
+                          child: Text("Scanner encore"),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    padding: EdgeInsets.all(16),
+                    itemCount: _audios.length,
+                    itemBuilder: (context, index) {
+                      return AudioTile(
+                        audio: _audios[index],
+                        isPlaying: _musicService.currentIndex == index,
+                        onTap: () => _onAudioTap(index),
+                      );
+                    },
                   ),
-                ),
-              ),
-              IconButton(
-                onPressed: loaded
-                    ? () async {
-                        if (player.position.inSeconds + 10 <=
-                            player.duration!.inSeconds) {
-                          await player.seek(
-                            Duration(seconds: player.position.inSeconds + 10),
-                          );
-                        } else {
-                          await player.seek(const Duration(seconds: 0));
-                        }
-                      }
-                    : null,
-                icon: const Icon(Icons.fast_forward_rounded),
-              ),
-              const SizedBox(width: 10),
-            ],
           ),
-          const Spacer(flex: 2),
+          // if (_musicService.currentAudio != null)
+          //   Miniplayer(
+          //     onTap: _openAudioScreen,
+          //     onPlayPause: () async {
+          //       await _musicService.playPause();
+          //       setState(() {});
+          //     },
+          //   ),
         ],
       ),
     );

@@ -24,7 +24,8 @@ android {
         applicationId = "com.example.multimediapp"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = 21
+        //minSdkVersion flutter.minSdkVersion
+        minSdk = 34
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
